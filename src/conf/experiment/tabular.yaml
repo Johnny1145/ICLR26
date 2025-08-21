@@ -1,0 +1,49 @@
+# @package _global_
+
+# train.py arguments
+project_name: regress-lm-regression-EXP1
+experiment_name: regression-${now:%Y-%m-%d_%H-%M-%S}
+use_wandb: true
+log_dir: logs
+seed: 42
+batch_size: 128
+num_epochs: 200
+learning_rate: 1e-4
+save_every_n_epochs: 1
+
+# Step-based checkpoint saving
+save_every_n_steps: 1000 # 每隔多少步保存一次checkpoint，设为null或0禁用
+
+# Learning rate scheduler
+scheduler:
+  type: cosine  # cosine, linear, constant
+  warmup_steps: 100
+  min_lr_ratio: 0.1  # minimum learning rate as a ratio of initial lr
+
+# Model parameters from train.py
+model:
+  max_input_len: 1024
+  max_num_objs: 1
+  d_model: 256
+  num_encoder_layers: 3
+  num_decoder_layers: 3
+  nhead: 4
+  dim_feedforward: 1024
+  dropout: 0.1
+
+# Dataset parameters from dataset.py's FeynmanDataset
+dataset:
+  name: regression
+  path:
+    train: null
+    val: null
+  params:
+    data_dir: data/regression_data
+
+# Other configurations
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+save_dir: outputs/regression/EXP1/${now:%Y-%m-%d}/${now:%H-%M-%S}/checkpoints
+if_ntl: false

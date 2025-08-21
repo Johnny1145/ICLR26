@@ -26,6 +26,7 @@ from .model.regress_lm.vocabs import DecoderVocab, SentencePieceVocab
 from src.utils.number_token_loss import NumberTokenLoss
 from src.utils.checkpoint import CheckpointManager
 from .data.dataset.bbob_dataset import BBOBDataset
+from .data.dataset.regression_dataset import RegressionDataset
 
 # Initialize vocabs
 encoder_vocab = SentencePieceVocab.from_t5()
@@ -165,6 +166,17 @@ class RegressionModule(BaseModule):
                         {"train_step_loss": loss.item()}, step=self.global_step
                     )
                 self.global_step += 1
+
+                # 每隔指定步数保存checkpoint
+                if (hasattr(self, 'checkpoint_manager') and 
+                    self.cfg.save_dir and 
+                    hasattr(self.cfg, 'save_every_n_steps') and 
+                    self.cfg.save_every_n_steps and 
+                    self.global_step % self.cfg.save_every_n_steps == 0):
+                    if self.accelerator.is_main_process:
+                        step_metrics = {"train_step_loss": loss.item(), "global_step": self.global_step}
+                        self.checkpoint_manager.save_checkpoint(self, f"step_{self.global_step}", step_metrics)
+                        print(f"保存checkpoint在step {self.global_step}")
 
                 progress_bar.set_postfix({"loss": f"{loss.item():.4f}"})
 
@@ -515,6 +527,7 @@ class RegressionModule(BaseModule):
             print("Skipping visualization due to error.")
 
 
+
 @hydra.main(config_path="conf", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     # Initialize wandb (or other loggers)
@@ -552,6 +565,19 @@ def main(cfg: DictConfig):
         )
         test_dataset = BBOBDataset(
             hdf5_file_path=cfg.dataset.params.hdf5_file_test_path,
+        )
+    elif cfg.dataset.name == "regression":
+        train_dataset = RegressionDataset(
+            data_dir=cfg.dataset.params.data_dir,
+            split="train",
+        )
+        val_dataset = RegressionDataset(
+            data_dir=cfg.dataset.params.data_dir,
+            split="val",
+        )
+        test_dataset = RegressionDataset(
+            data_dir=cfg.dataset.params.data_dir,
+            split="test",
         )
     else:
         raise ValueError(f"Unknown dataset: {cfg.dataset.name}")

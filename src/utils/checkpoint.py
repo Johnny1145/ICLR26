@@ -10,9 +10,9 @@ class CheckpointManager:
         self.best_metrics = {}
         os.makedirs(checkpoint_dir, exist_ok=True)
 
-    def save_checkpoint(self, module, epoch: int, metrics: Dict):
+    def save_checkpoint(self, module, epoch: int | str, metrics: Dict):
         # Save checkpoint
-        checkpoint_path = os.path.join(self.checkpoint_dir, f"checkpoint_epoch_{epoch}")
+        checkpoint_path = os.path.join(self.checkpoint_dir, f"checkpoint_{epoch}")
         # module.accelerator.save_state(checkpoint_path)
         os.makedirs(checkpoint_path, exist_ok=True)
         unwrapped_model = module.accelerator.unwrap_model(module.model)
@@ -23,17 +23,18 @@ class CheckpointManager:
         with open(metrics_path, "w") as f:
             json.dump(metrics, f)
 
-        # Update best metrics
-        for metric_name, value in metrics.items():
-            if (
-                metric_name not in self.best_metrics
-                or value < self.best_metrics[metric_name]["value"]
-            ):
-                self.best_metrics[metric_name] = {
-                    "value": value,
-                    "epoch": epoch,
-                    "path": checkpoint_path,
-                }
+        # Update best metrics (only for epoch-based checkpoints, not step-based)
+        if isinstance(epoch, int):
+            for metric_name, value in metrics.items():
+                if (
+                    metric_name not in self.best_metrics
+                    or value < self.best_metrics[metric_name]["value"]
+                ):
+                    self.best_metrics[metric_name] = {
+                        "value": value,
+                        "epoch": epoch,
+                        "path": checkpoint_path,
+                    }
 
     def load_best_checkpoint(self, module, metric_name: str):
         if metric_name in self.best_metrics:
